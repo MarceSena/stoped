@@ -439,6 +439,27 @@
             transform: translateY(-2px);
             box-shadow: 0 5px 12px rgba(244, 67, 54, 0.4);
         }
+
+        .btn-abort {
+            background: linear-gradient(135deg, var(--danger), #ff9900);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 18px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s;
+            box-shadow: 0 3px 8px rgba(244, 168, 54, 0.3);
+        }
+        
+        .btn-abort:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 12px rgba(202, 108, 0, 0.4);
+        }
         
         .completed-task {
             opacity: 0.8;
@@ -711,6 +732,9 @@
             <div class="tab" data-tab="stuck">
                 <i class="fas fa-exclamation-triangle"></i> Empacadas
             </div>
+            <div class="tab" data-tab="aborted">
+                <i class="fa-solid fa-poo"></i> não Finalizadas
+            </div>
         </div>
         
         <div class="task-list" id="task-list">
@@ -750,7 +774,7 @@
             </div>
             <button id="save-progress" class="btn-secondary" style="margin-top: 20px;">
                 <i class="fas fa-save"></i> Salvar Progresso
-            </button>
+            
         </div>
     </div>
 
@@ -905,6 +929,19 @@
                 renderTasks();
             }
         }
+
+        function abortTask(id) {
+            if (confirm('Tem certeza que deseja deixar esta tarefa?')) {
+                const task = tasks.find(task => task.id === id);
+                if(task){
+                   task.aborted = true
+                }
+
+                saveTasks();
+                updateStats();
+                renderTasks();
+            }
+        }
         
         function openProgressModal(id) {
             const task = tasks.find(task => task.id === id);
@@ -988,15 +1025,17 @@
             let filteredTasks = [];
             
             if (currentTab === 'active') {
-                filteredTasks = tasks.filter(task => !task.completed);
+                filteredTasks = tasks.filter(task => !task.completed && !task.aborted);
             } else if (currentTab === 'completed') {
-                filteredTasks = tasks.filter(task => task.completed);
+                filteredTasks = tasks.filter(task => task.completed && !task.aborted);
             } else if (currentTab === 'stuck') {
                 filteredTasks = tasks.filter(task => {
-                    if (task.completed) return false;
+                    if (task.completed || task.aborted) return false;
                     const days = getDaysSince(task.createdAt);
                     return days > 30 && task.progress < 50;
                 });
+            }else if (currentTab === 'aborted') {
+                filteredTasks = tasks.filter(task => task.aborted === true);
             }
             
             if (filteredTasks.length === 0) {
@@ -1010,10 +1049,14 @@
                     message = 'Nenhuma tarefa concluída ainda. Foco no término!';
                     icon = 'fas fa-check-circle';
                     title = 'Nenhuma conclusão';
-                } else {
+                } else if (currentTab === 'stuck') {
                     message = 'Nenhuma tarefa empacada. Ótimo trabalho!';
                     icon = 'fas fa-tachometer-alt';
                     title = 'Tudo sob controle';
+                } else{
+                    message = 'Tarefas deixadas não finalizadas.';
+                    icon = 'fa-solid fa-poo';
+                    title = 'Nenhuma tarefa não finalizada';
                 }
                 
                 taskList.innerHTML = `
@@ -1085,7 +1128,7 @@
                         </div>
                     </div>
                     
-                    ${!task.completed ? `
+                    ${!task.completed && !task.aborted ? `
                     <div class="action-plan">
                         <div class="action-plan-title">
                             <i class="fas fa-road"></i> Plano de Ação
@@ -1114,18 +1157,23 @@
                     ` : ''}
                     
                     <div class="task-actions">
-                        ${!task.completed ? `
+                        ${!task.completed && !task.aborted ? `
                             <button class="btn-edit" onclick="openProgressModal(${task.id})">
                                 <i class="fas fa-sync-alt"></i> Atualizar Progresso
                             </button>
-                        ` : `
-                            <button class="btn-complete" disabled>
-                                <i class="fas fa-check"></i> Concluído
-                            </button>
-                        `}
-                        <button class="btn-delete" onclick="deleteTask(${task.id})">
+                        ` : ``}
+
+                        ${!task.aborted ? `
+                        <button class="btn-abort" onclick="abortTask(${task.id})">
+                            <i class="fa-solid fa-poo"></i> Deixar
+                        </button>
+                        ` : ``}
+
+                        ${!task.aborted ? `
+                         <button class="btn-delete" onclick="deleteTask(${task.id})">
                             <i class="fas fa-trash"></i> Excluir
                         </button>
+                        ` : ``}                       
                     </div>
                 `;
                 
@@ -1156,6 +1204,7 @@
         // Tornar funções globais para uso nos event listeners
         window.openProgressModal = openProgressModal;
         window.deleteTask = deleteTask;
+        window.abortTask = abortTask;
         window.addStep = addStep;
         window.toggleActionStep = toggleActionStep;
     </script>
